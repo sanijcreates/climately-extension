@@ -1,9 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "Calendar Weather extension",
+  "name": "Weather Calendar",
   "description": "Check weather from your calendar",
   "version": "1.0",
   "action": {
     "default_popup": "index.html"
-  }
+  },
+  "icons": {
+    "16": "assets/icon.png",
+    "32": "assets/icon.png",
+    "48": "assets/icon.png",
+    "128": "assets/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": ["activeTab", "storage"]
 }
