@@ -39,13 +39,37 @@ public class calendarService {
     private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR_READONLY);
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
 
-    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+//    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+//        // Load client secrets.
+//        InputStream in = calendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+//        if (in == null) {
+//            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
+//        }
+//        System.out.println(in);
+//        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+//
+//        // Build flow and trigger user authorization request.
+//        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+//                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+//                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+//                .setAccessType("offline")
+//                .build();
+//        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8081).build();
+//        // Open the authorization URL in the browser
+////        String authorizationUrl = flow.newAuthorizationUrl().setRedirectUri(receiver.getRedirectUri()).build();
+////        openBrowser(authorizationUrl);
+//        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+//        System.out.println("asdasda   " + credential);
+//        // Return an authorized Credential object.
+//        return credential;
+//    }
+
+    public String getAuthorizationUrl(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
         // Load client secrets.
         InputStream in = calendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }
-        System.out.println(in);
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
         // Build flow and trigger user authorization request.
@@ -54,28 +78,55 @@ public class calendarService {
                 .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        // Open the authorization URL in the browser
-        String authorizationUrl = flow.newAuthorizationUrl().setRedirectUri(receiver.getRedirectUri()).build();
-        openBrowser(authorizationUrl);
+
+        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8081).build();
+
+        // Open the authorization URL in the browser and return it.
+        String redirecturl = flow.newAuthorizationUrl().setRedirectUri(receiver.getRedirectUri()).build();
+//        receiver.stop();
+        return redirecturl;
+    }
+
+    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+        InputStream in = calendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+        if (in == null) {
+            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
+        }
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+        // Build flow and trigger user authorization request.
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+                .setAccessType("offline")
+                .build();
+
+        // Set up a Local Server Receiver
+        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
+                .setPort(8081) // Specify the port to listen for the callback
+                .build();
+
+        // Build the authorization URL
+        String authorizationUrl = flow.newAuthorizationUrl()
+                .setRedirectUri(receiver.getRedirectUri())
+                .build();
+
+        // Print the authorization URL to the console
+        System.out.println("Authorization URL: " + authorizationUrl);
+
+        // Open the authorization URL in the browser (optional)
+//        openBrowser(authorizationUrl);
+
+        // Authorize the user and wait for the callback
         Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-        System.out.println(credential);
-        // Return an authorized Credential object.
+
+//        receiver.stop();
+
+        // Return the authorized Credential object
         return credential;
     }
 
-    private void openBrowser(String url) {
-        if (Desktop.isDesktopSupported()) {
-            try {
-                Desktop.getDesktop().browse(new URI(url));
-            } catch (IOException | URISyntaxException e) {
-                System.err.println("Failed to open browser: " + e.getMessage());
-            }
-        } else {
-            System.out.println("Desktop is not supported. Please open the following URL in your browser:");
-            System.out.println(url);
-        }
-    }
+
 
     public void listEvents() {
         try {
@@ -88,7 +139,7 @@ public class calendarService {
             // List the next 10 events from the primary calendar.
             DateTime now = new DateTime(System.currentTimeMillis());
             Events events = service.events().list("primary")
-                    .setMaxResults(10)
+                    .setMaxResults(100)
                     .setTimeMin(now)
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
