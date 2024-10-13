@@ -2,25 +2,21 @@
 chrome.storage.local.get("locationRequested", function (result) {
   if (result.locationRequested !== true) {
     chrome.storage.local.set({ locationRequested: true });
-
-    // Open Google first
-    window.open("https://www.google.com");
-
-    // Request the user's location
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        alert(
+    navigator.geolocation.getCurrentPosition(function (position) {
+      alert(
+        "We got your location, now please log in to Google Calendar \n" +
           "Latitude: " +
-            position.coords.latitude +
-            "\n" +
-            "Longitude: " +
-            position.coords.longitude
+          position.coords.latitude +
+          "\n" +
+          "Longitude: " +
+          position.coords.longitude
+      );
+      setTimeout(function () {
+        window.open(
+          "https://accounts.google.com/o/oauth2/auth?access_type=offline&client_id=600252755788-2ml7900hngkmg090sbj2b5is74c1625o.apps.googleusercontent.com&redirect_uri=http://localhost:8081/Callback&response_type=code&scope=https://www.googleapis.com/auth/calendar.readonly"
         );
-      },
-      function (error) {
-        console.error("Error getting location: ", error);
-      }
-    );
+      }, 100);
+    });
   } else {
     console.log("Location has already been requested.");
   }
