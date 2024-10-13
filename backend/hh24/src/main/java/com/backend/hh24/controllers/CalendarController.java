@@ -4,6 +4,11 @@ import com.backend.hh24.services.calendarService;
 import com.backend.hh24.services.weatherService;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.services.calendar.Calendar;
+import com.google.api.client.util.DateTime;
+import com.google.api.services.calendar.Calendar;
+import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
+import com.google.api.services.calendar.model.EventReminder;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import org.json.JSONArray;
@@ -14,10 +19,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -117,21 +121,21 @@ public class CalendarController {
         }
     }
 
-    private static class WeatherEvent {
-        LocalDateTime dateTime;
-        String condition;
-        double temperature;
-        double windSpeed;
-        double precipitation;
-
-        WeatherEvent(LocalDateTime dateTime, String condition, double temperature, double windSpeed, double precipitation) {
-            this.dateTime = dateTime;
-            this.condition = condition;
-            this.temperature = temperature;
-            this.windSpeed = windSpeed;
-            this.precipitation = precipitation;
-        }
-    }
+//    private static class WeatherEvent {
+//        LocalDateTime dateTime;
+//        String condition;
+//        double temperature;
+//        double windSpeed;
+//        double precipitation;
+//
+//        WeatherEvent(LocalDateTime dateTime, String condition, double temperature, double windSpeed, double precipitation) {
+//            this.dateTime = dateTime;
+//            this.condition = condition;
+//            this.temperature = temperature;
+//            this.windSpeed = windSpeed;
+//            this.precipitation = precipitation;
+//        }
+//    }
 
     private List<WeatherEvent> parseWeatherForecast(String forecast) {
         List<WeatherEvent> weatherEvents = new ArrayList<>();
@@ -151,28 +155,36 @@ public class CalendarController {
             String[] windSpeeds = parts[1].split("Wind Speeds:")[1].split("Other Metric:")[0].replace("[", "").replace("]", "").split(",");
             String[] otherMetrics = parts[1].split("Other Metric:")[1].replace("[", "").replace("]", "").split(",");
 
+            List<HourlyWeather> hourlyWeatherList = new ArrayList<>();
+
             for (int i = 0; i < conditions.length; i++) {
                 String condition = conditions[i].trim();
-                if (!condition.equals("Clear") && !condition.equals("Sunny")) {
-                    double temperature = Double.parseDouble(temperatures[i].trim());
-                    double windSpeed = Double.parseDouble(windSpeeds[i].trim());
-                    double precipitation = Double.parseDouble(otherMetrics[i].trim());
+                double temperature = Double.parseDouble(temperatures[i].trim());
+                double windSpeed = Double.parseDouble(windSpeeds[i].trim());
+                double precipitation = Double.parseDouble(otherMetrics[i].trim());
 
-                    LocalDateTime eventDateTime = LocalDateTime.parse(date + " " + String.format("%02d:00", i), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                LocalDateTime eventDateTime = LocalDateTime.parse(date + " " + String.format("%02d:00", i), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 
-                    formattedForecast.append("[")
-                            .append(eventDateTime.format(DateTimeFormatter.ofPattern("HH:mm")))
-                            .append(", ")
-                            .append(condition)
-                            .append(", ")
-                            .append(String.format("%.1fF", temperature * 9/5 + 32))
-                            .append(", Windspeed/mph ")
-                            .append(String.format("%.1f", windSpeed * 0.621371))
-                            .append(", Precipitation ")
-                            .append(String.format("%.1f", precipitation))
-                            .append("], ");
-                    weatherEvents.add(new WeatherEvent(eventDateTime, condition, temperature, windSpeed, precipitation));
-                }
+                hourlyWeatherList.add(new HourlyWeather(eventDateTime, condition, temperature, windSpeed, precipitation));
+            }
+
+            List<WeatherEvent> mergedEvents = mergeWeatherEvents(hourlyWeatherList);
+            weatherEvents.addAll(mergedEvents);
+
+            for (WeatherEvent event : mergedEvents) {
+                formattedForecast.append("[")
+                        .append(event.startTime.toString())
+                        .append("-")
+                        .append(event.endTime.toString())
+                        .append(", ")
+                        .append(event.condition)
+                        .append(", ")
+                        .append(String.format("%.1fF", event.temperature * 9/5 + 32))
+                        .append(", Windspeed/mph ")
+                        .append(String.format("%.1f", event.windSpeed * 0.621371))
+                        .append(", Precipitation ")
+                        .append(String.format("%.1f", event.precipitation))
+                        .append("], ");
             }
 
             if (formattedForecast.charAt(formattedForecast.length() - 1) == ' ') {
@@ -187,25 +199,166 @@ public class CalendarController {
         }
 
         formattedForecast.append("]]");
-        System.out.println(formattedForecast.toString());
+        System.out.println(formattedForecast);
 
         return weatherEvents;
     }
 
-    private List<Event> createWeatherEvents(Calendar service, List<WeatherEvent> weatherEvents,String location) throws IOException {
+    private List<WeatherEvent> mergeWeatherEvents(List<HourlyWeather> hourlyWeatherList) {
+        List<WeatherEvent> mergedEvents = new ArrayList<>();
+        List<HourlyWeather> currentMerge = new ArrayList<>();
+
+        for (HourlyWeather hourly : hourlyWeatherList) {
+            if (hourly.condition.equals("Clear") || hourly.condition.equals("Sunny")) {
+                if (!currentMerge.isEmpty()) {
+                    mergedEvents.add(createMergedEvent(currentMerge));
+                    currentMerge.clear();
+                }
+            } else {
+                currentMerge.add(hourly);
+            }
+        }
+
+        if (!currentMerge.isEmpty()) {
+            mergedEvents.add(createMergedEvent(currentMerge));
+        }
+
+        return mergedEvents;
+    }
+
+    private WeatherEvent createMergedEvent(List<HourlyWeather> hourlyWeathers) {
+        LocalDateTime startTime = hourlyWeathers.get(0).dateTime;
+        LocalDateTime endTime = hourlyWeathers.get(hourlyWeathers.size() - 1).dateTime.plusHours(1);
+        String condition = getMostSevereCondition(hourlyWeathers);
+        double avgTemperature = hourlyWeathers.stream().mapToDouble(hw -> hw.temperature).average().orElse(0);
+        double avgWindSpeed = hourlyWeathers.stream().mapToDouble(hw -> hw.windSpeed).average().orElse(0);
+        double avgPrecipitation = hourlyWeathers.stream().mapToDouble(hw -> hw.precipitation).average().orElse(0);
+
+        return new WeatherEvent(startTime, endTime, condition, avgTemperature, avgWindSpeed, avgPrecipitation);
+    }
+
+    private String getMostSevereCondition(List<HourlyWeather> hourlyWeathers) {
+        return hourlyWeathers.stream()
+                .max(Comparator.comparingInt(hw -> getConditionSeverity(hw.condition)))
+                .map(hw -> hw.condition)
+                .orElse("Unknown");
+    }
+
+    private int getConditionSeverity(String condition) {
+        Map<String, Integer> severityMap = new HashMap<>();
+        severityMap.put("Light rain shower", 5);
+        severityMap.put("Patchy light rain", 4);
+        severityMap.put("Patchy rain nearby", 3);
+        severityMap.put("Patchy light drizzle", 2);
+        severityMap.put("Cloudy", 1);
+        severityMap.put("Partly Cloudy", 1);
+        severityMap.put("Overcast", 1);
+
+        return severityMap.getOrDefault(condition, 0);
+    }
+
+    private static class HourlyWeather {
+        LocalDateTime dateTime;
+        String condition;
+        double temperature;
+        double windSpeed;
+        double precipitation;
+
+        HourlyWeather(LocalDateTime dateTime, String condition, double temperature, double windSpeed, double precipitation) {
+            this.dateTime = dateTime;
+            this.condition = condition;
+            this.temperature = temperature;
+            this.windSpeed = windSpeed;
+            this.precipitation = precipitation;
+        }
+    }
+
+    private static class WeatherEvent {
+        LocalDateTime startTime;
+        LocalDateTime endTime;
+        String condition;
+        double temperature;
+        double windSpeed;
+        double precipitation;
+
+        WeatherEvent(LocalDateTime startTime, LocalDateTime endTime, String condition, double temperature, double windSpeed, double precipitation) {
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.condition = condition;
+            this.temperature = temperature;
+            this.windSpeed = windSpeed;
+            this.precipitation = precipitation;
+        }
+    }
+
+    private List<Event> createWeatherEvents(Calendar service, List<WeatherEvent> weatherEvents, String location) throws IOException {
         List<Event> createdEvents = new ArrayList<>();
 
-        for (WeatherEvent weatherEvent : weatherEvents) {
-            String summary = weatherEvent.condition + " (" + weatherEvent.temperature + "°C)";
-            String description = "Significant weather event: " + weatherEvent.condition + " with temperature " + weatherEvent.temperature + "°C";
-            String startDateTime = weatherEvent.dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            String endDateTime = weatherEvent.dateTime.plusHours(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        Map<String, String> conditionToEmoji = new HashMap<>();
+        conditionToEmoji.put("Cloudy", "☁️");
+        conditionToEmoji.put("Partly Cloudy", "⛅");
+        conditionToEmoji.put("Overcast", "☁️");
+        conditionToEmoji.put("Light rain shower", "🌦️");
+        conditionToEmoji.put("Patchy light rain", "🌦️");
+        conditionToEmoji.put("Patchy rain nearby", "🌦️");
+        conditionToEmoji.put("Patchy light drizzle", "🌧️");
+        conditionToEmoji.put("Heavy rain", "🌧️");
+        conditionToEmoji.put("Thunderstorm", "⛈️");
+        conditionToEmoji.put("Snow", "❄️");
+        conditionToEmoji.put("Fog", "🌫️");
 
-            Event event = googleCalendarService.createEvent(service, summary, location, description, startDateTime, endDateTime);
+
+        for (WeatherEvent weatherEvent : weatherEvents) {
+            String emoji = conditionToEmoji.getOrDefault(weatherEvent.condition, "🌡️");
+            String summary = emoji + " " + weatherEvent.condition;
+
+            String description = String.format("From %s to %s:\n" +
+                            "Temperature: %.1f°C (%.1f°F)\n" +
+                            "Wind Speed: %.1f km/h (%.1f mph)\n" +
+                            "Precipitation: %.1f%%",
+                    weatherEvent.startTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    weatherEvent.endTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    weatherEvent.temperature,
+                    weatherEvent.temperature * 9/5 + 32,
+                    weatherEvent.windSpeed,
+                    weatherEvent.windSpeed * 0.621371,
+                    weatherEvent.precipitation);
+
+
+            Event event = new Event()
+                    .setSummary(summary)
+                    .setLocation(location)
+                    .setDescription(description);
+
+            DateTime startDateTime = new DateTime(weatherEvent.startTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+            EventDateTime start = new EventDateTime()
+                    .setDateTime(startDateTime)
+                    .setTimeZone("UTC");
+            event.setStart(start);
+
+
+            DateTime endDateTime = new DateTime(weatherEvent.endTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+            EventDateTime end = new EventDateTime()
+                    .setDateTime(endDateTime)
+                    .setTimeZone("UTC");
+            event.setEnd(end);
+
+            event.setColorId("7")  // A light blue color
+                    .setTransparency("transparent")  // Makes the event non-blocking
+                    .setVisibility("public");
+
+            EventReminder[] reminderOverrides = new EventReminder[] {};
+            Event.Reminders reminders = new Event.Reminders()
+                    .setUseDefault(false)
+                    .setOverrides(Arrays.asList(reminderOverrides));
+            event.setReminders(reminders);
+
+            event = service.events().insert("primary", event).execute();
             createdEvents.add(event);
         }
 
         return createdEvents;
     }
+
 
 }
