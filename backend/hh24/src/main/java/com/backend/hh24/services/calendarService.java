@@ -103,6 +103,7 @@ public class calendarService {
 
         // Set up a Local Server Receiver
         LocalServerReceiver receiver = new LocalServerReceiver.Builder()
+                .setHost("0.0.0.0")
                 .setPort(8081) // Specify the port to listen for the callback
                 .build();
 
@@ -138,9 +139,12 @@ public class calendarService {
 
             // List the next 10 events from the primary calendar.
             DateTime now = new DateTime(System.currentTimeMillis());
-            Events events = service.events().list("primary")
+            long fourDaysInMillis = 4 * 24 * 60 * 60 * 1000L; // 4 days in milliseconds
+            DateTime fourDaysLater = new DateTime(System.currentTimeMillis() + fourDaysInMillis);
+            Events events = service.events().list("c_f9c97a011333a52c03958d9a0672eeb52996fcdc93e84c8778185a9b9aaa45af@group.calendar.google.com")
                     .setMaxResults(100)
                     .setTimeMin(now)
+                    .setTimeMax(fourDaysLater)
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
                     .execute();
@@ -154,7 +158,13 @@ public class calendarService {
                     if (start == null) {
                         start = event.getStart().getDate();
                     }
-                    System.out.printf("%s (%s)\n", event.getSummary(), start);
+                    // Get event location
+                    String location = event.getLocation();
+                    if (location == null || location.isEmpty()) {
+                        location = "Location not specified";
+                    }
+
+                    System.out.printf("Event: %s (%s)\nLocation: %s\n", event.getSummary(), start, location);
                 }
             }
         } catch (IOException | GeneralSecurityException e) {

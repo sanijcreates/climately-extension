@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 public class Hh24backendApplication {
 
 	public static void main(String[] args) {
-		System.out.println("Hello world");
 		SpringApplication.run(Hh24backendApplication.class, args);
 	}
 
