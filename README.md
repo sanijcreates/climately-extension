@@ -1,4 +1,4 @@
-<img src="climatelylogo.png"/>
+<img src="climatelyLogo.png"/>
 ## Inspiration
 We created Climately to change how people plan their days. Imagine being able to see real-time weather information right next to your schedule! By combining these features, we want to boost productivity and help users make better daily decisions, no matter the weather.
 
