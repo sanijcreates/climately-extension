@@ -343,9 +343,13 @@ public class CalendarController {
                     .setTimeZone("UTC");
             event.setEnd(end);
 
-            event.setColorId("5")  // Banana (light yellow)
-                    .setTransparency("transparent")
-                    .setVisibility("public");
+            event.setColorId("1");
+
+            // Make the event non-blocking
+            event.setTransparency("transparent");
+
+            // Set visibility to default
+            event.setVisibility("default");
 
             // Add a low-key background event
 //            event.setEventType("outOfOffice");
