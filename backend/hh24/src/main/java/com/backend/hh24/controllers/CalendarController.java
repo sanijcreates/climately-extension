@@ -3,6 +3,8 @@ package com.backend.hh24.controllers;
 import com.backend.hh24.services.OpenAiService;
 import com.backend.hh24.services.calendarService;
 import com.backend.hh24.services.weatherService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.client.util.DateTime;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -78,6 +81,61 @@ public class CalendarController {
         }
     }
 
+    public void parseJsonAndCreateEvents(String json, com.google.api.client.auth.oauth2.Credential credential) throws Exception {
+        JSONObject jsonObject = new JSONObject(json);
+        String content = jsonObject.getJSONArray("choices")
+                .getJSONObject(0)
+                .getJSONObject("message")
+                .getString("content");
+
+        List<Map.Entry<ZonedDateTime, String>> pairs = parseTimeSuggestions(content);
+
+        Calendar service = googleCalendarService.getCalendarService(credential);
+
+        for (Map.Entry<ZonedDateTime, String> pair : pairs) {
+            ZonedDateTime startTime = pair.getKey();
+            ZonedDateTime endTime = startTime.plusMinutes(30);
+            String summary = pair.getValue();
+            DateTime start = new DateTime(startTime.toInstant().toEpochMilli());
+            DateTime end = new DateTime(endTime.toInstant().toEpochMilli());
+
+            System.out.println(start + " " + end + " " + summary);
+            Event event = googleCalendarService.createEvent(service, summary, "", "", start.toString(), end.toString());
+        }
+    }
+
+    public static List<Map.Entry<ZonedDateTime, String>> parseTimeSuggestions(String input) {
+        List<Map.Entry<ZonedDateTime, String>> pairs = new ArrayList<>();
+        String[] entries = input.split("\\],\\s*\\[");
+
+        for (String entry : entries) {
+            entry = entry.replaceAll("\\[\\[|\\]\\]", ""); // Remove outer brackets
+            String[] parts = entry.split(",", 2);
+            if (parts.length == 2) {
+                String timeString = parts[0].trim().replace("\"", "");
+                String suggestion = parts[1].trim().replaceAll("^\"|\"$", ""); // Remove surrounding quotes
+
+                ZonedDateTime time = ZonedDateTime.parse(timeString, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                pairs.add(new AbstractMap.SimpleEntry<>(time, suggestion));
+            }
+        }
+
+        return pairs;
+    }
+    private List<String[]> parseContent(String content) {
+        List<String[]> events = new ArrayList<>();
+        String[] lines = content.split("\n");
+        for (String line : lines) {
+            if (line.startsWith("[")) {
+                String[] parts = line.substring(1, line.length() - 1).split(", '", 2);
+                String dateTime = parts[0].replace("'", "");
+                String title = parts[1].substring(0, parts[1].length() - 1);
+                events.add(new String[]{dateTime, title});
+            }
+        }
+        return events;
+    }
+
     @PostMapping("/createEvent")
     public ResponseEntity<?> createEvent(@RequestParam String summary, @RequestParam String location, @RequestParam String description, @RequestParam String startDateTime, @RequestParam String endDateTime) {
         if (credential == null) {
@@ -120,6 +178,7 @@ public class CalendarController {
             String prompt = formattedCalEvents.toString() + "\n" + formattedForecast.toString();
             String json = openAiService.getCompletion(prompt);
             System.out.println(json);
+            parseJsonAndCreateEvents(json, credential);
 
             List<Event> createdEvents = createWeatherEvents(service, weatherEvents, location);
             //System.out.println(weatherEvents.toString());
@@ -128,6 +187,8 @@ public class CalendarController {
             return ResponseEntity.ok(result.toString());
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -39,7 +39,7 @@ private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/com
         try {
             ObjectNode rootNode = objectMapper.createObjectNode();
             rootNode.put("model", "gpt-4");
-            rootNode.put("max_tokens", 100);
+            rootNode.put("max_tokens", 1000);
 
             ArrayNode messagesArray = rootNode.putArray("messages");
 
