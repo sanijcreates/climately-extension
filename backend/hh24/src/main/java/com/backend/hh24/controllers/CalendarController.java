@@ -343,9 +343,12 @@ public class CalendarController {
                     .setTimeZone("UTC");
             event.setEnd(end);
 
-            event.setColorId("7")  // A light blue color
-                    .setTransparency("transparent")  // Makes the event non-blocking
+            event.setColorId("5")  // Banana (light yellow)
+                    .setTransparency("transparent")
                     .setVisibility("public");
+
+            // Add a low-key background event
+//            event.setEventType("outOfOffice");
 
             EventReminder[] reminderOverrides = new EventReminder[] {};
             Event.Reminders reminders = new Event.Reminders()
