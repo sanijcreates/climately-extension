@@ -56,20 +56,20 @@ public class WeatherController {
             String[] conditions = new String[24];
             double[] temps = new double[24];
             double[] windSpeeds = new double[24];
-            double[] otherMetric = new double[24];  // e.g., humidity
+            double[] precip_in = new double[24];  // e.g., humidity
 
             // Loop through each hour and extract necessary data
             for (int j = 0; j < hourlyArray.length(); j++) {
                 JSONObject hourData = hourlyArray.getJSONObject(j);
 
                 conditions[j] = hourData.getJSONObject("condition").getString("text");
-                temps[j] = hourData.getDouble("temp_c");
+                temps[j] = hourData.getDouble("temp_f");
                 windSpeeds[j] = hourData.getDouble("wind_kph");
-                otherMetric[j] = hourData.getDouble("humidity");  // Example: storing humidity
+                precip_in[j] = hourData.getDouble("precip_in");  // Example: storing humidity
             }
 
             // Create DateTime object with the parsed data
-            DateTime dateTime = new DateTime(date, conditions, temps, windSpeeds, otherMetric);
+            DateTime dateTime = new DateTime(date, conditions, temps, windSpeeds, precip_in);
             dateTimes.add(dateTime);
         }
 
@@ -79,4 +79,5 @@ public class WeatherController {
                 .map(DateTime::toString)
                 .collect(Collectors.joining("\n\n"));
     }
+
 }
