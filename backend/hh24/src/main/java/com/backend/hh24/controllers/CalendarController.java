@@ -32,6 +32,7 @@ public class CalendarController {
     private final calendarService googleCalendarService;
     private Credential credential;
     private StringBuilder formattedForecast;
+    private StringBuilder formattedCalEvents;
 
     public CalendarController(calendarService googleCalendarService, WeatherController weatherController) {
         this.googleCalendarService = googleCalendarService;
@@ -179,11 +180,9 @@ public class CalendarController {
                         .append(", ")
                         .append(event.condition)
                         .append(", ")
-                        .append(String.format("%.1fF", event.temperature * 9/5 + 32))
-                        .append(", Windspeed/mph ")
-                        .append(String.format("%.1f", event.windSpeed * 0.621371))
-                        .append(", Precipitation ")
-                        .append(String.format("%.1f", event.precipitation))
+                        .append(String.format("%.1fF", event.temperature * 9/5 + 32)).append(", ")
+                            .append(String.format("%.1f", event.windSpeed * 0.621371)).append(", ")
+                            .append(String.format("%.1f", event.precipitation))
                         .append("], ");
             }
 
@@ -204,6 +203,34 @@ public class CalendarController {
         return weatherEvents;
     }
 
+    private void parseCalendarEvents(List<Event> events) {
+        formattedCalEvents = new StringBuilder("[[");
+
+        for (Event event : events) {
+            String startDateTime = event.getStart().getDateTime().toString();
+            String endDateTime = event.getEnd().getDateTime().toString();
+            String summary = event.getSummary();
+            String description = event.getDescription() != null ? event.getDescription() : "none";
+            String location = event.getLocation() != null ? event.getLocation() : "none";
+
+            formattedCalEvents.append("[")
+                    .append(startDateTime).append(", ")
+                    .append(endDateTime).append(", ")
+                    .append(summary).append(", ")
+                    .append(description).append(", ")
+                    .append(location).append(", ")
+                    .append("], ");
+        }
+
+        if (formattedCalEvents.charAt(formattedCalEvents.length() - 1) == ' ') {
+            formattedCalEvents.setLength(formattedCalEvents.length() - 2);
+        }
+
+        formattedCalEvents.append("]]");
+        System.out.println(formattedCalEvents.toString());
+    }
+
+    private List<Event> createWeatherEvents(Calendar service, List<WeatherEvent> weatherEvents,String location) throws IOException {
     private List<WeatherEvent> mergeWeatherEvents(List<HourlyWeather> hourlyWeatherList) {
         List<WeatherEvent> mergedEvents = new ArrayList<>();
         List<HourlyWeather> currentMerge = new ArrayList<>();
