@@ -16,6 +16,8 @@ public class OpenAiService {
 
     @Value("${openai.api.key}")
     private String apiKey;
+    @Value("${openai.system.prompt}")
+private String systemPrompt;
 
 private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -40,6 +42,11 @@ private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/com
             rootNode.put("max_tokens", 100);
 
             ArrayNode messagesArray = rootNode.putArray("messages");
+
+            ObjectNode systemMessageNode = messagesArray.addObject();
+            systemMessageNode.put("role", "system");
+            systemMessageNode.put("content", systemPrompt);
+
             ObjectNode messageNode = messagesArray.addObject();
             messageNode.put("role", "user");
             messageNode.put("content", prompt);
