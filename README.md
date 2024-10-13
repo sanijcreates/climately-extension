@@ -1,3 +1,4 @@
+<img src="climatelylogo.png"/>
 ## Inspiration
 We created Climately to change how people plan their days. Imagine being able to see real-time weather information right next to your schedule! By combining these features, we want to boost productivity and help users make better daily decisions, no matter the weather.
 
@@ -36,3 +37,6 @@ Many hurdles had to be overcome to orchestrate the front-end, Calendar, Weather,
 
 ## What's next for Climately?
 We’re thrilled to announce our upcoming launch on the Chrome Web Store, making the Climately App accessible to a wider audience! We're also focused on introducing new exciting customizable preferences that empower users to personalize notifications and weather insights to fit their unique lifestyles!
+
+<img src="before.png"/>
+<img src="after .png"/>
