@@ -1,10 +1,10 @@
 package com.backend.hh24.services;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -17,15 +17,13 @@ import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 import org.springframework.stereotype.Service;
-import java.awt.Desktop;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URISyntaxException;
-import java.net.URI;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,168 +33,113 @@ public class calendarService {
     private static final String APPLICATION_NAME = "Google Calendar API Java Quickstart";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
-
-    // Adjust the scope as needed
-    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR_READONLY);
+    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
+    private static final String REDIRECT_URI = "http://localhost:8080/Callback";
 
-//    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-//        // Load client secrets.
-//        InputStream in = calendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-//        if (in == null) {
-//            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-//        }
-//        System.out.println(in);
-//        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-//
-//        // Build flow and trigger user authorization request.
-//        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-//                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-//                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-//                .setAccessType("offline")
-//                .build();
-//        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8081).build();
-//        // Open the authorization URL in the browser
-////        String authorizationUrl = flow.newAuthorizationUrl().setRedirectUri(receiver.getRedirectUri()).build();
-////        openBrowser(authorizationUrl);
-//        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-//        System.out.println("asdasda   " + credential);
-//        // Return an authorized Credential object.
-//        return credential;
-//    }
+    private final NetHttpTransport HTTP_TRANSPORT;
+    private GoogleAuthorizationCodeFlow flow;
+    private GoogleClientSecrets clientSecrets;
 
-    public String getAuthorizationUrl(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        // Load client secrets.
+    public calendarService() throws IOException, GeneralSecurityException {
+        HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        initializeFlow();
+    }
+
+    private void initializeFlow() throws IOException {
         InputStream in = calendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+        clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
-        // Build flow and trigger user authorization request.
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+        flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
-
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8081).build();
-
-        // Open the authorization URL in the browser and return it.
-        String redirecturl = flow.newAuthorizationUrl().setRedirectUri(receiver.getRedirectUri()).build();
-//        receiver.stop();
-        return redirecturl;
     }
 
-    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        InputStream in = calendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-        if (in == null) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-        }
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-        // Build flow and trigger user authorization request.
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-                .setAccessType("offline")
+    public String getAuthorizationUrl() {
+        return flow.newAuthorizationUrl()
+                .setRedirectUri(REDIRECT_URI)
                 .build();
-
-        // Set up a Local Server Receiver
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
-                .setHost("0.0.0.0")
-                .setPort(8081) // Specify the port to listen for the callback
-                .build();
-
-        // Build the authorization URL
-        String authorizationUrl = flow.newAuthorizationUrl()
-                .setRedirectUri(receiver.getRedirectUri())
-                .build();
-
-        // Print the authorization URL to the console
-        System.out.println("Authorization URL: " + authorizationUrl);
-
-        // Open the authorization URL in the browser (optional)
-//        openBrowser(authorizationUrl);
-
-        // Authorize the user and wait for the callback
-        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-
-//        receiver.stop();
-
-        // Return the authorized Credential object
-        return credential;
     }
 
-    public void listEvents() {
-        try {
-            // Build a new authorized API client service.
-            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-            Calendar service = new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-                    .setApplicationName(APPLICATION_NAME)
-                    .build();
+    public Credential getCredentials(String authorizationCode) throws IOException {
+        GoogleTokenResponse tokenResponse =
+                new GoogleAuthorizationCodeTokenRequest(
+                        HTTP_TRANSPORT,
+                        JSON_FACTORY,
+                        clientSecrets.getDetails().getClientId(),
+                        clientSecrets.getDetails().getClientSecret(),
+                        authorizationCode,
+                        REDIRECT_URI)
+                        .execute();
 
-            // List the next 10 events from the primary calendar.
-            DateTime now = new DateTime(System.currentTimeMillis());
-            long fourDaysInMillis = 4 * 24 * 60 * 60 * 1000L; // 4 days in milliseconds
-            DateTime fourDaysLater = new DateTime(System.currentTimeMillis() + fourDaysInMillis);
-            Events events = service.events().list("c_f9c97a011333a52c03958d9a0672eeb52996fcdc93e84c8778185a9b9aaa45af@group.calendar.google.com")
-                    .setMaxResults(100)
-                    .setTimeMin(now)
-                    .setTimeMax(fourDaysLater)
-                    .setOrderBy("startTime")
-                    .setSingleEvents(true)
-                    .execute();
-            List<Event> items = events.getItems();
-            if (items.isEmpty()) {
-                System.out.println("No upcoming events found.");
-            } else {
-                System.out.println("Upcoming events:");
-                for (Event event : items) {
-                    DateTime start = event.getStart().getDateTime();
-                    if (start == null) {
-                        start = event.getStart().getDate();
-                    }
-                    // Get event location
-                    String location = event.getLocation();
-                    if (location == null || location.isEmpty()) {
-                        location = "Location not specified";
-                    }
-
-                    System.out.printf("Event: %s (%s)\nLocation: %s\n", event.getSummary(), start, location);
-                }
-            }
-        } catch (IOException | GeneralSecurityException e) {
-            e.printStackTrace();
-        }
+        return flow.createAndStoreCredential(tokenResponse, "user");
     }
 
-    public void createEvent(final NetHttpTransport HTTP_TRANSPORT, String summary, String location, String description, String startDateTime, String endDateTime) throws IOException, GeneralSecurityException {
-        // Build a new authorized API client service.
-        Calendar service = new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+    public Calendar getCalendarService(Credential credential) throws IOException {
+        return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
                 .setApplicationName(APPLICATION_NAME)
                 .build();
+    }
 
-        // Create a new event
+    public List<Event> listEvents(Calendar service) throws IOException {
+        DateTime now = new DateTime(System.currentTimeMillis());
+        Events events = service.events().list("primary")
+                .setMaxResults(10)
+                .setTimeMin(now)
+                .setOrderBy("startTime")
+                .setSingleEvents(true)
+                .execute();
+        List<Event> items = events.getItems();
+        if (items.isEmpty()) {
+            System.out.println("No upcoming events found.");
+        } else {
+            System.out.println("Upcoming events:");
+            for (Event event : items) {
+                DateTime start = event.getStart().getDateTime();
+                if (start == null) {
+                    start = event.getStart().getDate();
+                }
+                System.out.printf("%s (%s)\n", event.getSummary(), start);
+            }
+        }
+        return items;
+    }
+
+    public Event createEvent(Calendar service, String summary, String location, String description, String startDateTime, String endDateTime) throws IOException {
         Event event = new Event()
                 .setSummary(summary)
                 .setLocation(location)
                 .setDescription(description);
 
-        //com.backend.hh24.controllers.DateTime startDateTimeObj = new com.backend.hh24.controllers.DateTime(startDateTime);
+        DateTime startDate = new DateTime(startDateTime);
         EventDateTime start = new EventDateTime()
-                .setDateTime(DateTime.parseRfc3339(startDateTime))
+                .setDateTime(startDate)
                 .setTimeZone("America/Los_Angeles");
         event.setStart(start);
 
-        //com.backend.hh24.controllers.DateTime endDateTimeObj = new com.backend.hh24.controllers.DateTime(endDateTime);
+        DateTime endDate = new DateTime(endDateTime);
         EventDateTime end = new EventDateTime()
-                .setDateTime(DateTime.parseRfc3339(endDateTime))
+                .setDateTime(endDate)
                 .setTimeZone("America/Los_Angeles");
         event.setEnd(end);
 
         String calendarId = "primary";
         event = service.events().insert(calendarId, event).execute();
         System.out.printf("Event created: %s\n", event.getHtmlLink());
+        return event;
+    }
+
+    public List<Event> createBatchEvents(Calendar service, List<String> summaries, List<String> locations, List<String> descriptions, List<String> startDateTimes, List<String> endDateTimes) throws IOException {
+        List<Event> createdEvents = new ArrayList<>();
+        for (int i = 0; i < summaries.size(); i++) {
+            Event event = createEvent(service, summaries.get(i), locations.get(i), descriptions.get(i), startDateTimes.get(i), endDateTimes.get(i));
+            createdEvents.add(event);
+        }
+        return createdEvents;
     }
 }
