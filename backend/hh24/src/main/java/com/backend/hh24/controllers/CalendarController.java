@@ -1,5 +1,6 @@
 package com.backend.hh24.controllers;
 
+import com.backend.hh24.services.OpenAiService;
 import com.backend.hh24.services.calendarService;
 import com.backend.hh24.services.weatherService;
 import com.google.api.client.auth.oauth2.Credential;
@@ -30,17 +31,20 @@ import java.util.stream.Collectors;
 public class CalendarController {
     private final WeatherController weatherController;
     private final calendarService googleCalendarService;
+    private final OpenAiService openAiService;
     private Credential credential;
     private StringBuilder formattedForecast;
+    private StringBuilder formattedCalEvents;
 
-    public CalendarController(calendarService googleCalendarService, WeatherController weatherController) {
+    public CalendarController(calendarService googleCalendarService, WeatherController weatherController, OpenAiService openAiService) {
         this.googleCalendarService = googleCalendarService;
         this.weatherController =weatherController;
+        this.openAiService = openAiService;
     }
 
     @GetMapping("/")
     public String random() {
-        System.out.println("working");
+//        System.out.println("working");
         return "working";
     }
 
@@ -101,6 +105,7 @@ public class CalendarController {
             // Get calendar events
             Calendar service = googleCalendarService.getCalendarService(credential);
             List<Event> events = googleCalendarService.listEvents(service);
+            parseCalendarEvents(events);
 
             result.append("Calendar Events:\n");
             for (Event event : events) {
@@ -111,8 +116,13 @@ public class CalendarController {
             // Get weather forecast
             String forecast = weatherController.getWeatherForecast(location);
             List<WeatherEvent> weatherEvents = parseWeatherForecast(forecast);
+
+            String prompt = formattedCalEvents.toString() + "\n" + formattedForecast.toString();
+            String json = openAiService.getCompletion(prompt);
+            System.out.println(json);
+
             List<Event> createdEvents = createWeatherEvents(service, weatherEvents, location);
-            System.out.println(weatherEvents.toString());
+            //System.out.println(weatherEvents.toString());
             result.append("Weather Forecast:\n").append(forecast);
 
             return ResponseEntity.ok(result.toString());
@@ -179,10 +189,9 @@ public class CalendarController {
                         .append(", ")
                         .append(event.condition)
                         .append(", ")
-                        .append(String.format("%.1fF", event.temperature * 9/5 + 32))
-                        .append(", Windspeed/mph ")
+                        .append(String.format("%.1fF", event.temperature * 9/5 + 32)).append(", ")
+                        .append(String.format("%.1f", event.windSpeed * 0.621371)).append(", ")
                         .append(String.format("%.1f", event.windSpeed * 0.621371))
-                        .append(", Precipitation ")
                         .append(String.format("%.1f", event.precipitation))
                         .append("], ");
             }
@@ -199,9 +208,31 @@ public class CalendarController {
         }
 
         formattedForecast.append("]]");
-        System.out.println(formattedForecast);
+//        System.out.println(formattedForecast);
 
         return weatherEvents;
+    }
+    private void parseCalendarEvents(List<Event> events) {
+        formattedCalEvents = new StringBuilder("[[");
+        for (Event event : events) {
+            String startDateTime = event.getStart().getDateTime().toString();
+            String endDateTime = event.getEnd().getDateTime().toString();
+            String summary = event.getSummary();
+            String description = event.getDescription() != null ? event.getDescription() : "none";
+            String location = event.getLocation() != null ? event.getLocation() : "none";
+            formattedCalEvents.append("[")
+                    .append(startDateTime).append(", ")
+                    .append(endDateTime).append(", ")
+                    .append(summary).append(", ")
+                    .append(description).append(", ")
+                    .append(location).append(", ")
+                    .append("], ");
+        }
+        if (formattedCalEvents.charAt(formattedCalEvents.length() - 1) == ' ') {
+            formattedCalEvents.setLength(formattedCalEvents.length() - 2);
+        }
+        formattedCalEvents.append("]]");
+        System.out.println(formattedCalEvents.toString());
     }
 
     private List<WeatherEvent> mergeWeatherEvents(List<HourlyWeather> hourlyWeatherList) {
@@ -343,7 +374,7 @@ public class CalendarController {
                     .setTimeZone("UTC");
             event.setEnd(end);
 
-            event.setColorId("5")  // Banana (light yellow)
+            event.setColorId("1")  // Banana (light yellow)
                     .setTransparency("transparent")
                     .setVisibility("public");
 
