@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build-extension": "npm run build && cp src/manifest.json dist/ && cp -r src/assets dist/",
+    "build-extension": "npm run build && cp src/manifest.json dist/ && cp -r src/assets dist/ && cp src/content.js dist/ && cp src/background.js dist/ ",
     "lint": "eslint .",
     "preview": "vite preview"
   },

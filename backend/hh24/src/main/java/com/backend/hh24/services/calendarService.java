@@ -14,6 +14,7 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 import org.springframework.stereotype.Service;
 import java.awt.Desktop;
@@ -127,8 +128,6 @@ public class calendarService {
         return credential;
     }
 
-
-
     public void listEvents() {
         try {
             // Build a new authorized API client service.
@@ -170,5 +169,34 @@ public class calendarService {
         } catch (IOException | GeneralSecurityException e) {
             e.printStackTrace();
         }
+    }
+
+    public void createEvent(final NetHttpTransport HTTP_TRANSPORT, String summary, String location, String description, String startDateTime, String endDateTime) throws IOException, GeneralSecurityException {
+        // Build a new authorized API client service.
+        Calendar service = new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+
+        // Create a new event
+        Event event = new Event()
+                .setSummary(summary)
+                .setLocation(location)
+                .setDescription(description);
+
+        //com.backend.hh24.controllers.DateTime startDateTimeObj = new com.backend.hh24.controllers.DateTime(startDateTime);
+        EventDateTime start = new EventDateTime()
+                .setDateTime(DateTime.parseRfc3339(startDateTime))
+                .setTimeZone("America/Los_Angeles");
+        event.setStart(start);
+
+        //com.backend.hh24.controllers.DateTime endDateTimeObj = new com.backend.hh24.controllers.DateTime(endDateTime);
+        EventDateTime end = new EventDateTime()
+                .setDateTime(DateTime.parseRfc3339(endDateTime))
+                .setTimeZone("America/Los_Angeles");
+        event.setEnd(end);
+
+        String calendarId = "primary";
+        event = service.events().insert(calendarId, event).execute();
+        System.out.printf("Event created: %s\n", event.getHtmlLink());
     }
 }

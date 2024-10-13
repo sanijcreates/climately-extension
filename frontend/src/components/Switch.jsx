@@ -10,7 +10,7 @@ export default function Switch() {
       className={classNames(
         "flex items-center w-12 h-6 bg-gray-500 rounded-full transition-all duration-300 shadow-lg cursor-pointer", // Adjusted width and height
         {
-          "bg-sky-500": isSelected,
+          "bg-green-500": isSelected,
         }
       )}
     >
