@@ -19,6 +19,11 @@ function App() {
       );
       setLocationRequested(false); // Update local state
     });
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length > 0) {
+        chrome.tabs.reload(tabs[0].id);
+      }
+    });
   };
 
   return (
@@ -77,8 +82,6 @@ function App() {
                 </div>
               </div>
             </div>
-            {/* Add more settings here if needed */}
-            {/* Centered Reset Location Button */}
           </div>
         </div>
         <hr className="border-blue-200 mx-0" />
