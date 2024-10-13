@@ -29,4 +29,5 @@ public class weatherService {
     }
 
     // Add more methods for other API endpoints as needed
+
 }
