@@ -35,14 +35,31 @@ public class CalendarController {
     private final WeatherController weatherController;
     private final calendarService googleCalendarService;
     private final OpenAiService openAiService;
-    private Credential credential;
+    private Credential credential = null;
     private StringBuilder formattedForecast;
     private StringBuilder formattedCalEvents;
+    private String climatelyId;
+    private Calendar service;
 
     public CalendarController(calendarService googleCalendarService, WeatherController weatherController, OpenAiService openAiService) {
         this.googleCalendarService = googleCalendarService;
         this.weatherController =weatherController;
         this.openAiService = openAiService;
+        initializeClimatelyCalendar();
+    }
+
+    private void initializeClimatelyCalendar() {
+        try {
+            service = googleCalendarService.getCalendarService(credential);
+            com.google.api.services.calendar.model.Calendar climately = new com.google.api.services.calendar.model.Calendar()
+                    .setSummary("Climately")
+                    .setTimeZone("UTC");
+            climately = service.calendars().insert(climately).execute();
+            climatelyId = climately.getId();
+        } catch (IOException e) {
+            // Handle the exception appropriately
+            e.printStackTrace();
+        }
     }
 
     @GetMapping("/")
@@ -95,12 +112,12 @@ public class CalendarController {
         for (Map.Entry<ZonedDateTime, String> pair : pairs) {
             ZonedDateTime startTime = pair.getKey();
             ZonedDateTime endTime = startTime.plusMinutes(30);
-            String summary = pair.getValue();
+            String summary = "✨ " + pair.getValue();
             DateTime start = new DateTime(startTime.toInstant().toEpochMilli());
             DateTime end = new DateTime(endTime.toInstant().toEpochMilli());
 
             System.out.println(start + " " + end + " " + summary);
-            Event event = googleCalendarService.createEvent(service, summary, "", "", start.toString(), end.toString());
+            Event event = googleCalendarService.createEvent(climatelyId, service, summary, "", "", start.toString(), end.toString());
         }
     }
 
@@ -143,7 +160,7 @@ public class CalendarController {
         }
         try {
             Calendar service = googleCalendarService.getCalendarService(credential);
-            Event event = googleCalendarService.createEvent(service, summary, location, description, startDateTime, endDateTime);
+            Event event = googleCalendarService.createEvent(climatelyId, service, summary, location, description, startDateTime, endDateTime);
             return ResponseEntity.ok(event);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
@@ -161,7 +178,7 @@ public class CalendarController {
 
         try {
             // Get calendar events
-            Calendar service = googleCalendarService.getCalendarService(credential);
+
             List<Event> events = googleCalendarService.listEvents(service);
             parseCalendarEvents(events);
 
@@ -400,18 +417,19 @@ public class CalendarController {
         conditionToEmoji.put("Fog", "🌫️");
 
 
+
         for (WeatherEvent weatherEvent : weatherEvents) {
             String emoji = conditionToEmoji.getOrDefault(weatherEvent.condition, "🌡️");
             String summary = emoji + " " + weatherEvent.condition;
 
             String description = String.format("From %s to %s:\n" +
-                            "Temperature: %.1f°C (%.1f°F)\n" +
+                            "Temperature: %.1f°F (%.1f°C)\n" +
                             "Wind Speed: %.1f km/h (%.1f mph)\n" +
                             "Precipitation: %.1f%%",
                     weatherEvent.startTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                     weatherEvent.endTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                     weatherEvent.temperature,
-                    weatherEvent.temperature * 9/5 + 32,
+                    (weatherEvent.temperature - 32) * 5/9,
                     weatherEvent.windSpeed,
                     weatherEvent.windSpeed * 0.621371,
                     weatherEvent.precipitation);
@@ -448,7 +466,7 @@ public class CalendarController {
                     .setOverrides(Arrays.asList(reminderOverrides));
             event.setReminders(reminders);
 
-            event = service.events().insert("primary", event).execute();
+            event = service.events().insert(climatelyId, event).execute();
             createdEvents.add(event);
         }
 

@@ -110,7 +110,7 @@ public class calendarService {
         return items;
     }
 
-    public Event createEvent(Calendar service, String summary, String location, String description, String startDateTime, String endDateTime) throws IOException {
+    public Event createEvent(String calendarId, Calendar service, String summary, String location, String description, String startDateTime, String endDateTime) throws IOException {
         Event event = new Event()
                 .setSummary(summary)
                 .setLocation(location)
@@ -128,7 +128,7 @@ public class calendarService {
                 .setTimeZone("America/Los_Angeles");
         event.setEnd(end);
 
-        String calendarId = "primary";
+
         event = service.events().insert(calendarId, event).execute();
         System.out.printf("Event created: %s\n", event.getHtmlLink());
         return event;

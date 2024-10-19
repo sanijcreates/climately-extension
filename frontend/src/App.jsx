@@ -24,6 +24,11 @@ function App() {
         chrome.tabs.reload(tabs[0].id);
       }
     });
+
+    // Add this function to a button click or other event in your popup
+    document
+      .getElementById("reloadButton")
+      .addEventListener("click", reloadParentPage);
   };
 
   return (
@@ -32,7 +37,7 @@ function App() {
         <div className="p-3 w-64">
           <header className="flex items-center">
             {/* <img src="assets/icon.png" className="w-6 h-6 mr-2" /> */}
-            <h1 className="text-sm text-left text-gray-900">Calendar</h1>
+            <h1 className="text-sm text-left text-gray-900">Climately</h1>
           </header>
         </div>
         <hr className="w-full border-blue-200 mx-0 " />
@@ -44,7 +49,7 @@ function App() {
             {/* Scroll View */}
             <div className="mb-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-900">Get weather</span>
+                <span className="text-sm text-gray-900">Notifications</span>
                 <div className="ml-auto">
                   <Switch />
                 </div>
@@ -52,7 +57,7 @@ function App() {
             </div>
             <div className="mb-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-900">Get notifications</span>
+                <span className="text-sm text-gray-900">Default Location</span>
                 <div className="ml-auto">
                   <Switch />
                 </div>
@@ -60,7 +65,9 @@ function App() {
             </div>
             <div className="mb-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-900">Get weather data</span>
+                <span className="text-sm text-gray-900">
+                  Activity Recommendations
+                </span>
                 <div className="ml-auto">
                   <Switch />
                 </div>
@@ -68,7 +75,7 @@ function App() {
             </div>
             <div className="mb-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-900"> Get dates</span>
+                <span className="text-sm text-gray-900"> Theme preference</span>
                 <div className="ml-auto">
                   <Switch />
                 </div>
@@ -76,7 +83,10 @@ function App() {
             </div>
             <div className="mb-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-900"> Get time</span>
+                <span className="text-sm text-gray-900">
+                  {" "}
+                  Temperature in Fahrenheit
+                </span>
                 <div className="ml-auto">
                   <Switch />
                 </div>
@@ -92,7 +102,7 @@ function App() {
               onClick={resetLocationRequest}
               className="rounded bg-blue-500 w-full text-white py-2 px-4 hover:bg-blue-600"
             >
-              Reset Location
+              Reset Climately
             </button>
           </footer>
         </div>
