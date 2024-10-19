@@ -134,10 +134,10 @@ public class calendarService {
         return event;
     }
 
-    public List<Event> createBatchEvents(Calendar service, List<String> summaries, List<String> locations, List<String> descriptions, List<String> startDateTimes, List<String> endDateTimes) throws IOException {
+    public List<Event> createBatchEvents(String climatelyId, Calendar service, List<String> summaries, List<String> locations, List<String> descriptions, List<String> startDateTimes, List<String> endDateTimes) throws IOException {
         List<Event> createdEvents = new ArrayList<>();
         for (int i = 0; i < summaries.size(); i++) {
-            Event event = createEvent(service, summaries.get(i), locations.get(i), descriptions.get(i), startDateTimes.get(i), endDateTimes.get(i));
+            Event event = createEvent(climatelyId, service, summaries.get(i), locations.get(i), descriptions.get(i), startDateTimes.get(i), endDateTimes.get(i));
             createdEvents.add(event);
         }
         return createdEvents;

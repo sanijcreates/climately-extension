@@ -9,9 +9,7 @@ import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
-import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.EventDateTime;
-import com.google.api.services.calendar.model.EventReminder;
+import com.google.api.services.calendar.model.*;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import org.json.JSONArray;
@@ -45,17 +43,34 @@ public class CalendarController {
         this.googleCalendarService = googleCalendarService;
         this.weatherController =weatherController;
         this.openAiService = openAiService;
-        initializeClimatelyCalendar();
     }
 
     private void initializeClimatelyCalendar() {
         try {
-            service = googleCalendarService.getCalendarService(credential);
+            // First, check if Climately calendar already exists
+            String pageToken = null;
+            do {
+                service = googleCalendarService.getCalendarService(credential);
+                CalendarList calendarList = service.calendarList().list().setPageToken(pageToken).execute();
+                List<CalendarListEntry> items = calendarList.getItems();
+                for (CalendarListEntry calendarListEntry : items) {
+                    if ("Climately".equals(calendarListEntry.getSummary())) {
+                        climatelyId = calendarListEntry.getId();
+                        System.out.println("Existing Climately calendar found with ID: " + climatelyId);
+                        return;
+                    }
+                }
+                pageToken = calendarList.getNextPageToken();
+            } while (pageToken != null);
+
+            // If we're here, it means no Climately calendar was found, so create a new one
             com.google.api.services.calendar.model.Calendar climately = new com.google.api.services.calendar.model.Calendar()
                     .setSummary("Climately")
                     .setTimeZone("UTC");
             climately = service.calendars().insert(climately).execute();
             climatelyId = climately.getId();
+            System.out.println("Created new Climately calendar with ID: " + climatelyId);
+
         } catch (IOException e) {
             // Handle the exception appropriately
             e.printStackTrace();
@@ -106,8 +121,6 @@ public class CalendarController {
                 .getString("content");
 
         List<Map.Entry<ZonedDateTime, String>> pairs = parseTimeSuggestions(content);
-
-        Calendar service = googleCalendarService.getCalendarService(credential);
 
         for (Map.Entry<ZonedDateTime, String> pair : pairs) {
             ZonedDateTime startTime = pair.getKey();
@@ -173,6 +186,7 @@ public class CalendarController {
         if (credential == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Please authorize first using /oAuth endpoint");
         }
+        initializeClimatelyCalendar();
 
         StringBuilder result = new StringBuilder();
 
@@ -208,23 +222,6 @@ public class CalendarController {
             throw new RuntimeException(e);
         }
     }
-
-//    private static class WeatherEvent {
-//        LocalDateTime dateTime;
-//        String condition;
-//        double temperature;
-//        double windSpeed;
-//        double precipitation;
-//
-//        WeatherEvent(LocalDateTime dateTime, String condition, double temperature, double windSpeed, double precipitation) {
-//            this.dateTime = dateTime;
-//            this.condition = condition;
-//            this.temperature = temperature;
-//            this.windSpeed = windSpeed;
-//            this.precipitation = precipitation;
-//        }
-//    }
-
     private List<WeatherEvent> parseWeatherForecast(String forecast) {
         List<WeatherEvent> weatherEvents = new ArrayList<>();
         formattedForecast = new StringBuilder("[[");
