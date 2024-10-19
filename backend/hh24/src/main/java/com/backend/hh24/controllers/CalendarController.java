@@ -69,8 +69,6 @@ public class CalendarController {
                     .setTimeZone("UTC");
             climately = service.calendars().insert(climately).execute();
             climatelyId = climately.getId();
-            System.out.println("Created new Climately calendar with ID: " + climatelyId);
-
         } catch (IOException e) {
             // Handle the exception appropriately
             e.printStackTrace();
