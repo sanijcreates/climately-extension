@@ -38,11 +38,13 @@ public class CalendarController {
     private StringBuilder formattedCalEvents;
     private String climatelyId;
     private Calendar service;
+    private boolean notifications;
 
     public CalendarController(calendarService googleCalendarService, WeatherController weatherController, OpenAiService openAiService) {
         this.googleCalendarService = googleCalendarService;
         this.weatherController =weatherController;
         this.openAiService = openAiService;
+        notifications = false;
     }
 
     private void initializeClimatelyCalendar() {
@@ -73,12 +75,6 @@ public class CalendarController {
             // Handle the exception appropriately
             e.printStackTrace();
         }
-    }
-
-    @GetMapping("/")
-    public String random() {
-//        System.out.println("working");
-        return "working";
     }
 
     @GetMapping("/oAuth")
@@ -180,10 +176,21 @@ public class CalendarController {
 
     //create a final endpoint that runs the get events api, and /forecast api. print both the api results.
     @GetMapping("/finalEndpoint")
-    public ResponseEntity<?> getFinalData(@RequestParam String location) {
+    public ResponseEntity<?> getFinalData(@RequestParam String location, @RequestParam boolean notifications) {
         if (credential == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Please authorize first using /oAuth endpoint");
         }
+
+        if (climatelyId != null && this.notifications != notifications) {
+            try {
+                updateNotificationsForAllEvents(notifications);
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating notifications: " + e.getMessage());
+            }
+            this.notifications = notifications;
+            return ResponseEntity.status(200).body("notification setting changed");
+        }
+
         initializeClimatelyCalendar();
 
         StringBuilder result = new StringBuilder();
@@ -218,6 +225,20 @@ public class CalendarController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+    private void updateNotificationsForAllEvents(boolean enableNotifications) throws IOException {
+        Events events = service.events().list(climatelyId).execute();
+        for (Event event : events.getItems()) {
+            Event.Reminders reminders = new Event.Reminders();
+            if (enableNotifications) {
+                EventReminder reminder = new EventReminder().setMethod("popup").setMinutes(30);
+                reminders.setUseDefault(false).setOverrides(Collections.singletonList(reminder));
+            } else {
+                reminders.setUseDefault(false).setOverrides(Collections.emptyList());
+            }
+            event.setReminders(reminders);
+            service.events().update(climatelyId, event.getId(), event).execute();
         }
     }
     private List<WeatherEvent> parseWeatherForecast(String forecast) {
@@ -452,8 +473,6 @@ public class CalendarController {
                     .setTransparency("transparent")
                     .setVisibility("public");
 
-            // Add a low-key background event
-//            event.setEventType("outOfOffice");
 
             EventReminder[] reminderOverrides = new EventReminder[] {};
             Event.Reminders reminders = new Event.Reminders()
