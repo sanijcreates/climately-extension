@@ -15,6 +15,7 @@ import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
+import com.google.api.services.calendar.model.EventReminder;
 import com.google.api.services.calendar.model.Events;
 import org.springframework.stereotype.Service;
 
@@ -110,7 +111,7 @@ public class calendarService {
         return items;
     }
 
-    public Event createEvent(String calendarId, Calendar service, String summary, String location, String description, String startDateTime, String endDateTime) throws IOException {
+    public Event createEvent(String calendarId, Calendar service, String summary, String location, String description, String startDateTime, String endDateTime, boolean notifications) throws IOException {
         Event event = new Event()
                 .setSummary(summary)
                 .setLocation(location)
@@ -127,7 +128,17 @@ public class calendarService {
                 .setDateTime(endDate)
                 .setTimeZone("America/Los_Angeles");
         event.setEnd(end);
-
+        // Set reminders based on the notifications boolean
+        Event.Reminders reminders = new Event.Reminders().setUseDefault(false);
+        if (notifications) {
+            EventReminder reminder = new EventReminder()
+                    .setMethod("popup")
+                    .setMinutes(30);  // Reminder 30 minutes before the event
+            reminders.setOverrides(Collections.singletonList(reminder));
+        } else {
+            reminders.setOverrides(Collections.emptyList());
+        }
+        event.setReminders(reminders);
 
         event = service.events().insert(calendarId, event).execute();
         System.out.printf("Event created: %s\n", event.getHtmlLink());

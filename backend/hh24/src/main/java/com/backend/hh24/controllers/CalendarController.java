@@ -107,7 +107,7 @@ public class CalendarController {
         }
     }
 
-    public void parseJsonAndCreateEvents(String json, com.google.api.client.auth.oauth2.Credential credential) throws Exception {
+    public void parseJsonAndCreateEvents(String json, com.google.api.client.auth.oauth2.Credential credential, boolean notifications) throws Exception {
         JSONObject jsonObject = new JSONObject(json);
         String content = jsonObject.getJSONArray("choices")
                 .getJSONObject(0)
@@ -124,7 +124,7 @@ public class CalendarController {
             DateTime end = new DateTime(endTime.toInstant().toEpochMilli());
 
             System.out.println(start + " " + end + " " + summary);
-            Event event = googleCalendarService.createEvent(climatelyId, service, summary, "", "", start.toString(), end.toString());
+            Event event = googleCalendarService.createEvent(climatelyId, service, summary, "", "", start.toString(), end.toString(), notifications);
         }
     }
 
@@ -176,9 +176,18 @@ public class CalendarController {
 
     //create a final endpoint that runs the get events api, and /forecast api. print both the api results.
     @GetMapping("/finalEndpoint")
-    public ResponseEntity<?> getFinalData(@RequestParam String location, @RequestParam boolean notifications) {
+    public ResponseEntity<?> getFinalData(@RequestParam String location, @RequestParam boolean notifications) throws IOException {
         if (credential == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Please authorize first using /oAuth endpoint");
+        }
+
+        service = googleCalendarService.getCalendarService(credential);
+        CalendarList calendarList = service.calendarList().list().setPageToken(null).execute();
+        List<CalendarListEntry> items = calendarList.getItems();
+        for (CalendarListEntry calendarListEntry : items) {
+            if ("Climately".equals(calendarListEntry.getSummary())) {
+                climatelyId = calendarListEntry.getId();
+            }
         }
 
         if (climatelyId != null && this.notifications != notifications) {
@@ -189,6 +198,8 @@ public class CalendarController {
             }
             this.notifications = notifications;
             return ResponseEntity.status(200).body("notification setting changed");
+        } else if (climatelyId != null) {
+            return ResponseEntity.status(200).body("nothing changed, parameters are same");
         }
 
         initializeClimatelyCalendar();
@@ -214,9 +225,9 @@ public class CalendarController {
             String prompt = formattedCalEvents.toString() + "\n" + formattedForecast.toString();
             String json = openAiService.getCompletion(prompt);
             System.out.println(json);
-            parseJsonAndCreateEvents(json, credential);
+            parseJsonAndCreateEvents(json, credential, notifications);
 
-            List<Event> createdEvents = createWeatherEvents(service, weatherEvents, location);
+            List<Event> createdEvents = createWeatherEvents(service, weatherEvents, location, notifications);
             //System.out.println(weatherEvents.toString());
             result.append("Weather Forecast:\n").append(forecast);
 
@@ -416,7 +427,7 @@ public class CalendarController {
         }
     }
 
-    private List<Event> createWeatherEvents(Calendar service, List<WeatherEvent> weatherEvents, String location) throws IOException {
+    private List<Event> createWeatherEvents(Calendar service, List<WeatherEvent> weatherEvents, String location, boolean notifications) throws IOException {
         List<Event> createdEvents = new ArrayList<>();
 
         Map<String, String> conditionToEmoji = new HashMap<>();
@@ -474,10 +485,16 @@ public class CalendarController {
                     .setVisibility("public");
 
 
-            EventReminder[] reminderOverrides = new EventReminder[] {};
-            Event.Reminders reminders = new Event.Reminders()
-                    .setUseDefault(false)
-                    .setOverrides(Arrays.asList(reminderOverrides));
+            // Set reminders based on the notifications boolean
+            Event.Reminders reminders = new Event.Reminders().setUseDefault(false);
+            if (notifications) {
+                EventReminder reminder = new EventReminder()
+                        .setMethod("popup")
+                        .setMinutes(30);  // Reminder 30 minutes before the event
+                reminders.setOverrides(Collections.singletonList(reminder));
+            } else {
+                reminders.setOverrides(Collections.emptyList());
+            }
             event.setReminders(reminders);
 
             event = service.events().insert(climatelyId, event).execute();
