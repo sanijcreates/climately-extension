@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Weather Calendar",
-  "description": "Check weather from your calendar",
+  "name": "Calendly",
+  "description": "Live Weather Updates in Google Calendar.",
   "version": "1.0",
   "action": {
     "default_popup": "index.html"
@@ -18,5 +18,6 @@
       "js": ["content.js"]
     }
   ],
-  "permissions": ["activeTab", "storage"]
+  "permissions": ["activeTab", "storage", "identity"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAl68noSbhTh+4Q4nEmp7YzZUIbYVBMo5HWL50W4xfRkknV0d5TAJBTiq8uqp8oH+bRWu61MXrjkYPQUhDk/4j767KTkt6Yn9EdcAmtvmw7GfJ0fnCS4XTu8q8H3O7QGiaak4gHLILX9eZMlVDXTPYsmnZzqpwoigsY4o2U5MaznEU/kG8VGvkrXmBF+viRXFJOZc/4Q+9E2ilrgK6/VI384uhDp7AbrPGajEoe8bDiqrg2LI+n0Osqv/FDOzwIMJ9whSJkmt1U22a70wOXAcmzYFKHxfTk5zL3WmCdIGoYuuT3j8P6OboeZMXZUGlQc+wHVDwX8qPMe4tA+r0fglVawIDAQAB"
 }

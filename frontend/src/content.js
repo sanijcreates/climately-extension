@@ -1,24 +1,21 @@
-// Check if the location has already been requested
 chrome.storage.local.get("locationRequested", function (result) {
   if (result.locationRequested !== true) {
     chrome.storage.local.set({ locationRequested: true });
     navigator.geolocation.getCurrentPosition(function (position) {
+      const lat = position.coords.latitude;
+      const long = position.coords.longitude;
+      const notificationsEnabled = result.notificationsEnabled || false;
       alert(
-        "We got your location, now please log in to Google Calendar \n" +
+        "We retrieved your location, now please log in to Google Calendar \n" +
           "Latitude: " +
-          position.coords.latitude +
+          lat + // Accessible here
           "\n" +
           "Longitude: " +
-          position.coords.longitude
+          long // Accessible here
       );
       setTimeout(function () {
         window.open(
-          "https://accounts.google.com/o/oauth2/auth?access_type=offline&client_id=600252755788-2ml7900hngkmg090sbj2b5is74c1625o.apps.googleusercontent.com&redirect_uri=http://localhost:8080/Callback&response_type=code&scope=https://www.googleapis.com/auth/calendar"
-        );
-      }, 100);
-      setTimeout(function () {
-        window.open(
-          "https://accounts.google.com/o/oauth2/auth?access_type=offline&client_id=600252755788-2ml7900hngkmg090sbj2b5is74c1625o.apps.googleusercontent.com&redirect_uri=http://localhost:8081/Callback&response_type=code&scope=https://www.googleapis.com/auth/calendar.readonly"
+          `http://localhost:8080/finalEndpoint?location=${lat},${long}&notifications=${notificationsEnabled}`
         );
       }, 15000);
     });
