@@ -127,29 +127,3 @@ div[role="gridcell"] {
   will-change: transform;
   contain: strict;
 }
-
-/* Prevent layout shifts */
-.K2fuAf {
-  contain: strict !important;
-  transform-style: preserve-3d;
-}
-
-/* Fix z-index issues */
-[role="gridcell"] {
-  isolation: isolate !important;
-}
-
-.calendar-day {
-  position: relative;
-  height: ${HOUR_HEIGHT * 14}px; /* 14-hour day */
-}
-
-.calendar-event {
-  position: absolute;
-  left: 5px;
-  right: 5px;
-  border-radius: 4px;
-  padding: 4px;
-  color: white;
-  overflow: hidden;
-}

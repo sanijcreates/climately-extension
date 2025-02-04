@@ -15,9 +15,9 @@ const App = ({ dateKey }) => {
     },
     {
       id: 2,
-      dateKey: "28227",
+      dateKey: "28228",
       startTime: "8:00pm",
-      endTime: "10:00pm",
+      endTime: "11:00pm",
       title: "LeetCode Meetings",
       location: "Glatfelater Hall, Basement",
       color: "#8e24aa",
