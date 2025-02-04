@@ -1,0 +1,155 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* App.css */
+/* Match Google Calendar's event styling */
+.gcal-event {
+  border-left: 3px solid;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+}
+
+/* Ensure time grid alignment */
+.time-grid {
+  position: absolute;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Add to your CSS */
+.gcal-overlay-container {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 1000 !important; /* Higher than Google's default */
+}
+
+/* Prevent Google Calendar from overlapping */
+div[role="gridcell"] {
+  position: static !important;
+}
+
+/* Match Google's animation timing */
+.your-event-class {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* calendar-overrides.css */
+/* Match Google's event styling */
+.gcal-custom-event {
+  border-left: 3px solid rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Prevent Google's elements from overlapping */
+div[role="gridcell"] {
+  position: relative !important;
+}
+
+/* Add this to your stylesheet */
+.K2fuAf {
+  position: relative !important;
+}
+
+.gcal-overlay {
+  mix-blend-mode: multiply;
+  will-change: transform;
+  contain: strict;
+}
+
+/* Prevent layout shifts */
+.K2fuAf {
+  contain: strict !important;
+  transform-style: preserve-3d;
+}
+
+/* Fix z-index issues */
+[role="gridcell"] {
+  isolation: isolate !important;
+}
+
+.calendar-day {
+  position: relative;
+  height: ${HOUR_HEIGHT * 14}px; /* 14-hour day */
+}
+
+.calendar-event {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  border-radius: 4px;
+  padding: 4px;
+  color: white;
+  overflow: hidden;
+}
